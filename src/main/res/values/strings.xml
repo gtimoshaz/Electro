@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Electro</string>
+    <string name="pick_element">Pick element</string>
 </resources>
