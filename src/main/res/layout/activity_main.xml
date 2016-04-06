@@ -43,5 +43,7 @@
         android:id="@+id/whattodo"
         android:layout_alignTop="@+id/element"
         android:layout_alignLeft="@+id/space"
-        android:layout_alignStart="@+id/space" />
+        android:layout_alignStart="@+id/space"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true" />
 </RelativeLayout>
