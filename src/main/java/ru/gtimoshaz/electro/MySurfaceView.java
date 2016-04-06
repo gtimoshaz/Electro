@@ -9,11 +9,12 @@ import android.graphics.Path;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.View;
 
 /**
  * Created by george on 06.04.16.
  */
-public class MySurfaceView extends SurfaceView implements SurfaceHolder.Callback {
+public class MySurfaceView extends SurfaceView implements SurfaceHolder.Callback, View.OnTouchListener {
 
     SurfaceHolder surfaceHolder;
     Path path;
@@ -21,26 +22,6 @@ public class MySurfaceView extends SurfaceView implements SurfaceHolder.Callback
 
     public MySurfaceView(Context context) {
         super(context);
-    }
-
-    @Override
-    public boolean onTouchEvent(MotionEvent event) {
-        if (event.getAction() == MotionEvent.ACTION_DOWN) {
-            path = new Path();
-            path.moveTo(event.getX(), event.getY());
-        } else if (event.getAction() == MotionEvent.ACTION_MOVE) {
-            path.lineTo(event.getX(), event.getY());
-        } else if (event.getAction() == MotionEvent.ACTION_UP) {
-            path.lineTo(event.getX(), event.getY());
-        }
-
-        if (path != null) {
-            Canvas canvas = surfaceHolder.lockCanvas();
-            canvas.drawPath(path, paint);
-            surfaceHolder.unlockCanvasAndPost(canvas);
-        }
-
-        return true;
     }
 
     @Override
@@ -62,5 +43,25 @@ public class MySurfaceView extends SurfaceView implements SurfaceHolder.Callback
     @Override
     public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
 
+    }
+
+    @Override
+    public boolean onTouch(View view, MotionEvent event) {
+        if (event.getAction() == MotionEvent.ACTION_DOWN) {
+            path = new Path();
+            path.moveTo(event.getX(), event.getY());
+        } else if (event.getAction() == MotionEvent.ACTION_MOVE) {
+            path.lineTo(event.getX(), event.getY());
+        } else if (event.getAction() == MotionEvent.ACTION_UP) {
+            path.lineTo(event.getX(), event.getY());
+        }
+
+        if (path != null) {
+            Canvas canvas = surfaceHolder.lockCanvas();
+            canvas.drawPath(path, paint);
+            surfaceHolder.unlockCanvasAndPost(canvas);
+        }
+
+        return true;
     }
 }
