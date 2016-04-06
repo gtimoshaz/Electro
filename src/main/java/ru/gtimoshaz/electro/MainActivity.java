@@ -5,8 +5,9 @@ import android.os.Bundle;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.View;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements View.OnTouchListener {
 
     SurfaceView surfaceView;
 
@@ -19,6 +20,14 @@ public class MainActivity extends AppCompatActivity {
 
         surfaceView.getHolder().addCallback(new MySurfaceView(surfaceView.getContext()));
 
+        surfaceView.setOnTouchListener(this);
+
+    }
+
+
+    @Override
+    public boolean onTouch(View view, MotionEvent motionEvent) {
+        return surfaceView.onTouchEvent(motionEvent);
     }
 
 }
