@@ -23,6 +23,7 @@ public class MySurfaceView extends SurfaceView implements SurfaceHolder.Callback
     private Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private Paint paint_red = new Paint(Paint.ANTI_ALIAS_FLAG);
     private Paint paint_rectInResistor = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private Paint paint_rectBounds = new Paint(Paint.ANTI_ALIAS_FLAG);
     private class Resistor {
         float x1;
         float y1;
@@ -61,9 +62,13 @@ public class MySurfaceView extends SurfaceView implements SurfaceHolder.Callback
         paint_red.setStrokeWidth(3);
         paint_red.setColor(Color.RED);
 
-        paint_rectInResistor.setStyle(Paint.Style.FILL);
-        paint_rectInResistor.setStrokeWidth(3);
+        paint_rectInResistor.setStyle(Paint.Style.FILL_AND_STROKE);
+        paint_rectInResistor.setStrokeWidth(24);
         paint_rectInResistor.setColor(Color.WHITE);
+
+        paint_rectBounds.setStyle(Paint.Style.FILL_AND_STROKE);
+        paint_rectBounds.setStrokeWidth(30);
+        paint_rectBounds.setColor(Color.BLACK);
     }
 
     @Override
@@ -83,15 +88,21 @@ public class MySurfaceView extends SurfaceView implements SurfaceHolder.Callback
         Iterator<Resistor> iterator = resistors.iterator();
         Resistor resistor;
         Path rectInResistor = new Path();
+        Path rectInternal   = new Path();
 
         while (iterator.hasNext()) {
             resistor = iterator.next();
             canvas.drawLine(resistor.x1, resistor.y1, resistor.x2, resistor.y2, paint);
             rectInResistor.moveTo(resistor.x1 + (resistor.x2 - resistor.x1) / 3, resistor.y1 + (resistor.y2 - resistor.y1) / 3);
             rectInResistor.lineTo(resistor.x2 - (resistor.x2 - resistor.x1) / 3, resistor.y2 - (resistor.y2 - resistor.y1) / 3);
-            canvas.drawPath(rectInResistor, paint_red);
+
+            rectInternal.moveTo(resistor.x1 + (resistor.x2 - resistor.x1) / 3.1f, resistor.y1 + (resistor.y2 - resistor.y1) / 3.1f);
+            rectInternal.lineTo(resistor.x2 - (resistor.x2 - resistor.x1) / 3.1f, resistor.y2 - (resistor.y2 - resistor.y1) / 3.1f);
+
         }
 
+        canvas.drawPath(rectInternal, paint_rectBounds);
+        canvas.drawPath(rectInResistor, paint_rectInResistor);
 
         canvas.drawLine(down_x, down_y, last_x, last_y, paint_red);
 
