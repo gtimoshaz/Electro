@@ -1,4 +1,11 @@
 <resources>
     <string name="app_name">Electro</string>
-    <string name="pick_element">Pick element</string>
+    <string name="move">Move element</string>
+    <string name="draw">Draw element</string>
+    <string name="delete">Delete element</string>
+    <string-array name="elements"></string-array>
+    <string-array name="instruments"><item>@string/draw</item>
+        <item>@string/move</item>
+        <item>@string/delete</item>
+    </string-array>
 </resources>

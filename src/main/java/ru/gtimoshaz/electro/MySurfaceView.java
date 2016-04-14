@@ -7,24 +7,43 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PointF;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.widget.AdapterView;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.Timer;
+import java.util.TimerTask;
 
 /**
  * Created by george on 06.04.16.
  */
-public class MySurfaceView extends SurfaceView implements SurfaceHolder.Callback, View.OnTouchListener {
+public class MySurfaceView extends SurfaceView implements SurfaceHolder.Callback, View.OnTouchListener, AdapterView.OnItemSelectedListener {
 
     private SurfaceHolder surfaceHolder;
     private Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private Paint paint_red = new Paint(Paint.ANTI_ALIAS_FLAG);
     private Paint paint_rectInResistor = new Paint(Paint.ANTI_ALIAS_FLAG);
     private Paint paint_rectBounds = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final float MERGE_DIST = 144;
+    private final int INSTRUMENT_DRAW = 0;
+    private final int INSTRUMENT_MOVE = 1;
+    private final int INSTRUMENT_DELETE = 2;
+
+    @Override
+    public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+        touch_action = i;
+    }
+
+    @Override
+    public void onNothingSelected(AdapterView<?> adapterView) {
+        touch_action = -1;
+    }
+
     private class Resistor {
         float x1() {
             return from.x;
@@ -50,29 +69,18 @@ public class MySurfaceView extends SurfaceView implements SurfaceHolder.Callback
             this.name = name;
         }
 
-        public Resistor(float x1, float y1, float x2, float y2, float r, String name) {
-            //this.x1 = x1;
-            //this.y1 = y1;
-
-            from = new PointF(x1, y1);
-
-            //this.x2 = x2;
-            //this.y2 = y2;
-
-            to = new PointF(x2, y2);
-
-            R = r;
-            this.name = name;
-        }
     }
     private ArrayList<PointF> vertexes = new ArrayList<>();
     private ArrayList<Resistor> resistors = new ArrayList<>();
     private float down_x, down_y, last_x, last_y;
     private boolean draw_last_resistor;
+    private PointF toMove = null;
+    private int touch_action = -1;
 
     public MySurfaceView(Context context) {
         super(context);
     }
+
 
     @Override
     public void surfaceCreated(SurfaceHolder surfaceHolder) {
@@ -134,22 +142,38 @@ public class MySurfaceView extends SurfaceView implements SurfaceHolder.Callback
 
         }
 
-        int i = 0;
+        for (PointF pf :
+                vertexes) {
+            canvas.drawCircle(pf.x, pf.y, (float) Math.sqrt(MERGE_DIST), paint_rectBounds);
+        }
 
         if (draw_last_resistor) canvas.drawLine(down_x, down_y, last_x, last_y, paint_red);
 
         surfaceHolder.unlockCanvasAndPost(canvas);
     }
 
-    private float sqr(float x) {
+    private static float sqr(float x) {
         return x * x;
+    }
+
+    private static float dist_sqr(PointF p1, PointF p2) {
+        return sqr(p2.x - p1.x) + sqr(p2.y - p1.y);
+    }
+
+    private static float dist_sqr(float x1, float y1, float x2, float y2) {
+        return sqr(x2 - x1) + sqr(y2 - y1);
+    }
+
+
+    private static float dist(PointF p1, PointF p2) {
+        return (float) Math.sqrt(sqr(p2.x - p1.x) + sqr(p2.y - p1.y));
     }
 
     private void addResistor(float x1, float y1, float x2, float y2, float R) {
 
         PointF p1, p2;
 
-        float dist, dist_min_1 = 2000, dist_min_2 = 2000;
+        float dist, dist_min_1 = MERGE_DIST, dist_min_2 = MERGE_DIST;
         PointF nearest1 = null, nearest2 = null;
 
         for (PointF vertex : vertexes) {
@@ -182,33 +206,104 @@ public class MySurfaceView extends SurfaceView implements SurfaceHolder.Callback
 
     }
 
+    private PointF findNearest(float x, float y) {
+
+        PointF c = new PointF(x, y);
+        PointF nearest = null;
+
+        float dist = Float.POSITIVE_INFINITY;
+
+        for (PointF pf : vertexes) {
+            if (dist_sqr(pf, c) < dist) {
+                nearest = pf;
+                dist = dist_sqr(pf, c);
+            }
+        }
+        return nearest;
+    }
+
+    private void downAction() {
+        switch (touch_action) {
+            case INSTRUMENT_DRAW:
+                break;
+
+            case INSTRUMENT_MOVE:
+                toMove = findNearest(down_x, down_y);
+                break;
+
+            case INSTRUMENT_DELETE:
+                break;
+        }
+    }
+
+    private void moveAction() {
+        switch (touch_action) {
+            case INSTRUMENT_DRAW:
+                draw_last_resistor = true;
+                break;
+
+            case INSTRUMENT_MOVE:
+                toMove.set(last_x, last_y);
+                break;
+
+            case INSTRUMENT_DELETE:
+                break;
+        }
+    }
+    private void upAction() {
+        switch (touch_action) {
+            case INSTRUMENT_DRAW:
+                if (sqr(last_x - down_x) + sqr(last_y - down_y) > 1600)
+                    addResistor(down_x, down_y, last_x, last_y, 220);
+                draw_last_resistor = false;
+                break;
+
+            case INSTRUMENT_MOVE:
+                float d = MERGE_DIST;
+                PointF pointF = null;
+                for (PointF pf : vertexes) {
+                    if (pf == toMove) continue;
+                    if (dist_sqr(pf, toMove) < d) {
+                        pointF = pf;
+                        d = dist_sqr(pf, toMove);
+                    }
+                }
+
+                if (pointF != null)
+                for (Resistor r : resistors) {
+                    if (toMove == r.to)   r.to   = pointF;
+                    if (toMove == r.from) r.from = pointF;
+                }
+                toMove = null;
+                break;
+
+            case INSTRUMENT_DELETE:
+                break;
+        }
+    }
+
+
     @Override
     public boolean onTouch(View view, MotionEvent event) {
-
-        boolean multi = event.getPointerCount() > 1;
 
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
             down_x = event.getX();
             down_y = event.getY();
-
-            //for (int i = 0; i < resistors.length; i++) {
-
-            //}
-
+            downAction();
         } else if (event.getAction() == MotionEvent.ACTION_MOVE) {
             last_x = event.getX();
             last_y = event.getY();
-            draw_last_resistor = true;
+            moveAction();
+
         } else if (event.getAction() == MotionEvent.ACTION_UP) {
-
-            if (draw_last_resistor && (last_x - down_x) * (last_x - down_x) + (last_y - down_y) * (last_y - down_y) > 1600)
-                addResistor(down_x, down_y, last_x, last_y, 220);
-
-            draw_last_resistor = false;
+            last_x = event.getX();
+            last_y = event.getY();
+            upAction();
         }
 
         redraw();
 
         return true;
     }
+
 }

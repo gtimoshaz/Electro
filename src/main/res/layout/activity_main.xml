@@ -45,5 +45,6 @@
         android:layout_alignLeft="@+id/space"
         android:layout_alignStart="@+id/space"
         android:layout_alignParentRight="true"
-        android:layout_alignParentEnd="true" />
+        android:layout_alignParentEnd="true"
+        android:entries="@array/instruments"/>
 </RelativeLayout>
