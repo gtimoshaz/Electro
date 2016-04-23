@@ -1,11 +1,24 @@
 <resources>
     <string name="app_name">Electro</string>
+
     <string name="move">Move element</string>
     <string name="draw">Draw element</string>
     <string name="delete">Delete element</string>
-    <string-array name="elements"></string-array>
     <string-array name="instruments"><item>@string/draw</item>
         <item>@string/move</item>
         <item>@string/delete</item>
+    </string-array>
+
+    <string name="cable">Cable</string>
+    <string name="r220">220 Ω resistor</string>
+    <string name="r1k">1 kΩ resistor</string>
+    <string name="r10k">10 kΩ resistor</string>
+    <string name="c100n">100 nF capacitor</string>
+    <string-array name="elements">
+        <item>@string/cable</item>
+        <item>@string/r220</item>
+        <item>@string/r1k</item>
+        <item>@string/r10k</item>
+        <item>@string/c100n</item>
     </string-array>
 </resources>

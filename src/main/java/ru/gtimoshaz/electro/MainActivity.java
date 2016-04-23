@@ -24,9 +24,12 @@ public class MainActivity extends AppCompatActivity {
         surfaceView.getHolder().addCallback(mySurfaceView);
         surfaceView.setOnTouchListener(mySurfaceView);
 
+        elementsSpinner    = (Spinner) findViewById(R.id.element);
+        elementsSpinner   .setOnItemSelectedListener(mySurfaceView);
+        elementsSpinner   .setSelection(1);
+
         instrumentsSpinner = (Spinner) findViewById(R.id.whattodo);
         instrumentsSpinner.setOnItemSelectedListener(mySurfaceView);
-
     }
 
 }
