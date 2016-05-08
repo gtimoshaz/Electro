@@ -3,9 +3,11 @@ package ru.gtimoshaz.electro;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PointF;
+import android.graphics.RectF;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -30,7 +32,8 @@ public class MySurfaceView extends SurfaceView implements SurfaceHolder.Callback
     private final int INSTRUMENT_DRAW = 0;
     private final int INSTRUMENT_MOVE = 1;
     private final int INSTRUMENT_DELETE = 2;
-    private float resistance = 220;
+    private float evalue = 220;
+    private EComponentType etype = EComponentType.RESISTOR;
 
     @Override
     public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
@@ -39,18 +42,28 @@ public class MySurfaceView extends SurfaceView implements SurfaceHolder.Callback
         else {
             switch (i) {
                 case 0:
-                    resistance = 0;
+                    evalue = 0;
+                    etype = EComponentType.RESISTOR;
                     break;
                 case 1:
-                    resistance = 220;
+                    evalue = 220;
+                    etype = EComponentType.RESISTOR;
                     break;
                 case 2:
-                    resistance = 1000;
+                    evalue = 1000;
+                    etype = EComponentType.RESISTOR;
                     break;
                 case 3:
-                    resistance = 10000;
+                    evalue = 10000;
+                    etype = EComponentType.RESISTOR;
                     break;
-                case 4: resistance = -1e-7f;
+                case 4:
+                    evalue = 1e-7f;
+                    etype = EComponentType.CAPACITOR;
+                    break;
+                case 5:
+                    evalue = 12;
+                    etype = EComponentType.EMF;
             }
         }
 
@@ -62,6 +75,9 @@ public class MySurfaceView extends SurfaceView implements SurfaceHolder.Callback
     }
 
     private class ElectroComponent {
+        private final static int TYPE_RESISTOR = 0;
+        private final static int TYPE_CAPACITOR = 1;
+        private final static int TYPE_EMF = 2;
         float x1() {
             return from.x;
         };
@@ -74,17 +90,21 @@ public class MySurfaceView extends SurfaceView implements SurfaceHolder.Callback
         float y2() {
             return to.y;
         };
-        // Resistance of resistor if > 0 and capacity of capacitor if < 0
-        // Cable if = 0
-        float R;
+        // Resistance (Oms) of resistor if type = TYPE_RESISTOR, capacity (Farads) of capacitor if TYPE_CAPACITOR
+        // EMF (Volts) if TYPE_EMF
+        float value;
+
+        EComponentType type;
+
         String name;
 
         PointF from, to;
 
-        public ElectroComponent(PointF from, PointF to, float r, String name) {
+        public ElectroComponent(PointF from, PointF to, float value, EComponentType type, String name) {
             this.from = from;
             this.to = to;
-            this.R = r;
+            this.value = value;
+            this.type = type;
             this.name = name;
         }
 
@@ -139,6 +159,68 @@ public class MySurfaceView extends SurfaceView implements SurfaceHolder.Callback
 
     }
 
+    private void drawComponent(Canvas canvas, ElectroComponent electroComponent) {
+        Path rectInResistor = new Path();
+        Path rectInternal   = new Path();
+
+        canvas.drawLine(electroComponent.x1(), electroComponent.y1(), electroComponent.x2(), electroComponent.y2(), paint);
+
+        if (electroComponent.type == EComponentType.RESISTOR && electroComponent.value != 0) {
+            rectInResistor.moveTo(electroComponent.x1() + (electroComponent.x2() - electroComponent.x1()) / 3, electroComponent.y1() + (electroComponent.y2() - electroComponent.y1()) / 3);
+            rectInResistor.lineTo(electroComponent.x2() - (electroComponent.x2() - electroComponent.x1()) / 3, electroComponent.y2() - (electroComponent.y2() - electroComponent.y1()) / 3);
+
+            rectInternal.moveTo(electroComponent.x1() + (electroComponent.x2() - electroComponent.x1()) / 3.1f, electroComponent.y1() + (electroComponent.y2() - electroComponent.y1()) / 3.1f);
+            rectInternal.lineTo(electroComponent.x2() - (electroComponent.x2() - electroComponent.x1()) / 3.1f, electroComponent.y2() - (electroComponent.y2() - electroComponent.y1()) / 3.1f);
+
+            canvas.drawPath(rectInternal, paint_rectBounds);
+            canvas.drawPath(rectInResistor, paint_rectInResistor);
+
+            canvas.drawText(electroComponent.name + " - " + electroComponent.value + " Ω", (electroComponent.x1() + electroComponent.x2()) / 2 - 30, (electroComponent.y1() + electroComponent.y2()) / 2 + 60, paint);
+        }
+
+        if (electroComponent.type == EComponentType.CAPACITOR) {
+            rectInResistor.moveTo(electroComponent.x1() + (electroComponent.x2() - electroComponent.x1()) / 2.1f, electroComponent.y1() + (electroComponent.y2() - electroComponent.y1()) / 2.1f);
+            rectInResistor.lineTo(electroComponent.x2() - (electroComponent.x2() - electroComponent.x1()) / 2.1f, electroComponent.y2() - (electroComponent.y2() - electroComponent.y1()) / 2.1f);
+
+            rectInternal.moveTo(electroComponent.x1() + (electroComponent.x2() - electroComponent.x1()) / 2.2f, electroComponent.y1() + (electroComponent.y2() - electroComponent.y1()) / 2.2f);
+            rectInternal.lineTo(electroComponent.x2() - (electroComponent.x2() - electroComponent.x1()) / 2.2f, electroComponent.y2() - (electroComponent.y2() - electroComponent.y1()) / 2.2f);
+
+            canvas.drawPath(rectInternal, paint_rectBounds);
+            canvas.drawPath(rectInResistor, paint_rectInCapacitor);
+
+            canvas.drawText(electroComponent.name + " - " + electroComponent.value + " F", (electroComponent.x1() + electroComponent.x2()) / 2 - 30, (electroComponent.y1() + electroComponent.y2()) / 2 + 60, paint);
+        }
+
+        if (electroComponent.type == EComponentType.EMF) {
+
+            float radius = 40;
+            float cx = (electroComponent.x1() + electroComponent.x2()) / 2;
+            float cy = (electroComponent.y1() + electroComponent.y2()) / 2;
+
+            Matrix matrix = new Matrix();
+            RectF bounds = new RectF();
+            rectInternal.moveTo(cx - 30, cy +  0);
+            rectInternal.lineTo(cx + 30, cy +  0);
+            rectInternal.lineTo(cx + 15, cy - 15);
+            rectInternal.moveTo(cx + 15, cy + 15);
+            rectInternal.lineTo(cx + 30, cy +  0);
+
+            rectInternal.computeBounds(bounds, true);
+            float alpha;
+            alpha = (float) Math.atan2(electroComponent.y2() - electroComponent.y1(), electroComponent.x2() - electroComponent.x1());
+            matrix.postRotate(alpha / (float) Math.PI * 180f, cx, cy);
+            rectInternal.transform(matrix);
+
+            canvas.drawCircle(cx, cy, radius, paint_rectInResistor);
+            canvas.drawCircle(cx, cy, radius, paint);
+
+            canvas.drawPath(rectInternal, paint);
+
+            canvas.drawText(electroComponent.name + " - " + electroComponent.value + " V", (electroComponent.x1() + electroComponent.x2()) / 2 - 30, (electroComponent.y1() + electroComponent.y2()) / 2 + 60, paint);
+        }
+
+    }
+
     private void redraw() {
         Canvas canvas = surfaceHolder.lockCanvas();
         canvas.drawRGB(255, 255, 255);
@@ -147,41 +229,8 @@ public class MySurfaceView extends SurfaceView implements SurfaceHolder.Callback
         ElectroComponent electroComponent;
 
         while (iterator.hasNext()) {
-            Path rectInResistor = new Path();
-            Path rectInternal   = new Path();
-
             electroComponent = iterator.next();
-            canvas.drawLine(electroComponent.x1(), electroComponent.y1(), electroComponent.x2(), electroComponent.y2(), paint);
-
-            if (electroComponent.R != 0) {
-                if (electroComponent.R > 0) {
-                    rectInResistor.moveTo(electroComponent.x1() + (electroComponent.x2() - electroComponent.x1()) / 3, electroComponent.y1() + (electroComponent.y2() - electroComponent.y1()) / 3);
-                    rectInResistor.lineTo(electroComponent.x2() - (electroComponent.x2() - electroComponent.x1()) / 3, electroComponent.y2() - (electroComponent.y2() - electroComponent.y1()) / 3);
-
-                    rectInternal.moveTo(electroComponent.x1() + (electroComponent.x2() - electroComponent.x1()) / 3.1f, electroComponent.y1() + (electroComponent.y2() - electroComponent.y1()) / 3.1f);
-                    rectInternal.lineTo(electroComponent.x2() - (electroComponent.x2() - electroComponent.x1()) / 3.1f, electroComponent.y2() - (electroComponent.y2() - electroComponent.y1()) / 3.1f);
-
-                    canvas.drawPath(rectInternal, paint_rectBounds);
-                    canvas.drawPath(rectInResistor, paint_rectInResistor);
-                }
-                else {
-                    rectInResistor.moveTo(electroComponent.x1() + (electroComponent.x2() - electroComponent.x1()) / 2.1f, electroComponent.y1() + (electroComponent.y2() - electroComponent.y1()) / 2.1f);
-                    rectInResistor.lineTo(electroComponent.x2() - (electroComponent.x2() - electroComponent.x1()) / 2.1f, electroComponent.y2() - (electroComponent.y2() - electroComponent.y1()) / 2.1f);
-
-                    rectInternal.moveTo(electroComponent.x1() + (electroComponent.x2() - electroComponent.x1()) / 2.2f, electroComponent.y1() + (electroComponent.y2() - electroComponent.y1()) / 2.2f);
-                    rectInternal.lineTo(electroComponent.x2() - (electroComponent.x2() - electroComponent.x1()) / 2.2f, electroComponent.y2() - (electroComponent.y2() - electroComponent.y1()) / 2.2f);
-
-                    canvas.drawPath(rectInternal, paint_rectBounds);
-                    canvas.drawPath(rectInResistor, paint_rectInCapacitor);
-                }
-
-            }
-            if (electroComponent.R > 0)
-                canvas.drawText(electroComponent.name + " - " + electroComponent.R + " Ω", (electroComponent.x1() + electroComponent.x2()) / 2 - 30, (electroComponent.y1() + electroComponent.y2()) / 2 + 60, paint);
-
-            if (electroComponent.R < 0)
-                canvas.drawText(electroComponent.name + " - " + electroComponent.R + " F", (electroComponent.x1() + electroComponent.x2()) / 2 - 30, (electroComponent.y1() + electroComponent.y2()) / 2 + 60, paint);
-
+            drawComponent(canvas, electroComponent);
         }
 
         for (PointF pf :
@@ -211,11 +260,24 @@ public class MySurfaceView extends SurfaceView implements SurfaceHolder.Callback
         return (float) Math.sqrt(sqr(p2.x - p1.x) + sqr(p2.y - p1.y));
     }
 
+    private String prefix(EComponentType t) {
+        switch (t) {
+            case CAPACITOR:
+                return "C";
+            case RESISTOR:
+                return "R";
+            case EMF:
+                return "ε";
+            default:
+                return "";
+        }
+    }
+
     private void addElectroComponent(float x1, float y1, float x2, float y2, float resist) {
 
         PointF p1, p2;
 
-        float dist, dist_min_1 = MERGE_DIST, dist_min_2 = MERGE_DIST;
+        float dist, dist_min_1 = 16 * MERGE_DIST, dist_min_2 = 16 * MERGE_DIST;
         PointF nearest1 = null, nearest2 = null;
 
         for (PointF vertex : vertexes) {
@@ -244,14 +306,7 @@ public class MySurfaceView extends SurfaceView implements SurfaceHolder.Callback
             vertexes.add(p2);
         }
 
-        if (resist > 0)
-            electroComponents.add(new ElectroComponent(p1, p2, resist, "R" + electroComponents.size()));
-
-        if (resist < 0)
-            electroComponents.add(new ElectroComponent(p1, p2, resist, "C" + electroComponents.size()));
-
-        if (resist == 0)
-            electroComponents.add(new ElectroComponent(p1, p2, resist, "N" + electroComponents.size()));
+        electroComponents.add(new ElectroComponent(p1, p2, resist, etype, prefix(etype) + electroComponents.size()));
 
     }
 
@@ -299,22 +354,11 @@ public class MySurfaceView extends SurfaceView implements SurfaceHolder.Callback
                 break;
 
             case INSTRUMENT_MOVE:
-                if (pf != null && dist_sqr(pf.x, pf.y, down_x, down_y) < 4 * MERGE_DIST) toMove = pf;
+                if (pf != null && dist_sqr(pf.x, pf.y, down_x, down_y) < (16 * MERGE_DIST)) toMove = pf;
                 break;
 
             case INSTRUMENT_DELETE:
-                if (pf != null && dist_sqr(pf.x, pf.y, down_x, down_y) < 2 * MERGE_DIST) {
-                    ArrayList<ElectroComponent> toDelete = new ArrayList<>();
-                    for (ElectroComponent r :
-                            electroComponents) {
-                        if (r.from == pf || r.to == pf) toDelete.add(r);
-                    }
-                    for (ElectroComponent r :
-                            toDelete) {
-                        electroComponents.remove(r);
-                    }
-                    findAndRemoveUnusedVertexes();
-                }
+
                 break;
         }
     }
@@ -338,7 +382,7 @@ public class MySurfaceView extends SurfaceView implements SurfaceHolder.Callback
         switch (touch_action) {
             case INSTRUMENT_DRAW:
                 if (sqr(last_x - down_x) + sqr(last_y - down_y) > 1600)
-                    addElectroComponent(down_x, down_y, last_x, last_y, resistance);
+                    addElectroComponent(down_x, down_y, last_x, last_y, evalue);
                 draw_last_resistor = false;
                 break;
 
@@ -365,6 +409,19 @@ public class MySurfaceView extends SurfaceView implements SurfaceHolder.Callback
                 break;
 
             case INSTRUMENT_DELETE:
+                PointF pf = findNearest(last_x, last_y);
+                if (pf != null && dist_sqr(pf.x, pf.y, last_x, last_y) < 16 * MERGE_DIST) {
+                    ArrayList<ElectroComponent> toDelete = new ArrayList<>();
+                    for (ElectroComponent r :
+                            electroComponents) {
+                        if (r.from == pf || r.to == pf) toDelete.add(r);
+                    }
+                    for (ElectroComponent r :
+                            toDelete) {
+                        electroComponents.remove(r);
+                    }
+                    findAndRemoveUnusedVertexes();
+                }
                 break;
         }
     }
